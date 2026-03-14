@@ -1,19 +1,27 @@
 # Networking
 
-Modern Swift networking library targeting Swift 6.2+ with async/await, Swift macros, test support, and an incremental roadmap for observability, interceptors, and security.
+Modern Swift networking library targeting Swift 6.2+ with async/await, typed requests, and test support.
 
-## Current Baseline
+## What Is Included
 
-- SwiftPM package with `Networking`, `NetworkingMacros`, and `NetworkingTestSupport`
-- Core protocols for requests, responses, API requests, and clients
-- `URLSession`-backed async client with error mapping and status validation
-- Builder-style `HTTPRequestData`
-- Codable response decoding
-- Test support for mocking `URLSession`
+- `Networking` for request protocols, request building, response decoding, and the `URLSession` client
+- `NetworkingTestSupport` for mocking `URLSession` in tests
+- `HTTPRequestData` for fluent request construction
+- `APIRequest` for typed `Decodable` responses
+- `URLSessionNetworkClient` for async request execution and error mapping
 
-## Next Milestones
+## Package Structure
 
-- Real macro expansion for `@Request`, `@Client`, and `@Parameter`
-- Interceptor pipeline
-- OpenTelemetry integration
-- Upload, download, caching, and SSL pinning
+- [Tutorial](Docs/Tutorial.md)
+- [Architecture Notes](Docs/Architecture.md)
+
+## Current Focus
+
+The package is now intentionally small and explicit. Requests are written as regular Swift types instead of generated through macros, which keeps the public API straightforward and removes the `swift-syntax` toolchain dependency.
+
+## Likely Next Steps
+
+- Add more request types that model your real endpoints
+- Introduce shared helpers for authentication headers or common query parameters
+- Expand tests around request building and failure handling
+- Add higher-level features like interceptors, retries, or observability only when a concrete need appears

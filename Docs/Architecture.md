@@ -1,12 +1,11 @@
 # Architecture Notes
 
-## Phase 1 Foundation
+## Modules
 
-The package is split into three targets:
+The package is split into two targets:
 
-- `Networking`: public protocols, request builder, errors, and the `URLSession` client.
-- `NetworkingMacros`: macro implementation target reserved for declarative API generation.
-- `NetworkingTestSupport`: mock session and response builders used by tests and downstream adopters.
+- `Networking`: public protocols, request builder, errors, and the `URLSession` client
+- `NetworkingTestSupport`: mock session and response builders used by tests and downstream adopters
 
 ## Request Flow
 
@@ -15,6 +14,18 @@ The package is split into three targets:
 3. The client executes through `URLSession`, validates the HTTP status code, and wraps the result in `NetworkResponse`.
 4. The `APIRequest` decodes the typed response.
 
-## Design Direction
+## Design Principles
 
-This baseline keeps transport concerns separate from typed API decoding so later phases can add interceptors, telemetry, retries, and macros without rewriting the execution core.
+- Keep transport concerns separate from typed decoding
+- Prefer explicit Swift types over code generation
+- Keep testability first-class through a mockable session boundary
+- Add higher-level behavior without rewriting the execution core
+
+## Extension Points
+
+The current design leaves room for future additions such as:
+
+- Interceptors or middleware around request execution
+- Retry policies
+- Observability hooks
+- Specialized upload and download APIs

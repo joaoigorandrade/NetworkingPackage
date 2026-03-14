@@ -85,6 +85,8 @@ struct GetUserRequest: APIRequest {
 }
 ```
 
+This package favors plain Swift request types. There are no macros or generated declarations to maintain.
+
 ## Configure a Client
 
 Create one `URLSessionNetworkClient` with your API base URL.
@@ -304,8 +306,6 @@ The package currently includes:
 - Automatic `Decodable` response decoding
 - Test support utilities
 
-The macro declarations exist in the package, but real macro expansion is not implemented yet.
-
 ## Recommended Project Structure
 
 A simple app integration can look like this:
@@ -332,4 +332,5 @@ After this tutorial, the most natural follow-ups are:
 
 1. Add request families for each endpoint in your API
 2. Centralize authentication and common headers in shared request builders
-3. Introduce interceptor support once that phase lands in the package
+3. Add tests for successful decoding, error mapping, and any custom decoders you introduce
+4. Introduce cross-cutting features like interceptors only once you know what behavior should be shared
