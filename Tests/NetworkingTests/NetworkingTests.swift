@@ -14,7 +14,7 @@ struct UserRequest: APIRequest {
     let userID: Int
 
     var request: any HTTPRequest {
-        HTTPRequestData(path: "/users/\(userID)")
+        HTTPRequestData(path: "/users/\(userID)", apiVersion: .v1)
     }
 }
 
@@ -35,12 +35,49 @@ func requestBuilderCreatesExpectedURLRequest() throws {
 }
 
 @Test
+func requestBuilderPrefixesVersionedRoutes() throws {
+    let request = HTTPRequestData(path: "/groups", apiVersion: .v1, method: .post)
+
+    let urlRequest = try request.makeURLRequest(
+        configuration: NetworkConfiguration(
+            baseURL: URL(string: "https://example.com")!,
+            apiVersion: .v1
+        )
+    )
+
+    #expect(urlRequest.url?.absoluteString == "https://example.com/v1/groups")
+}
+
+@Test
+func requestBuilderKeepsRootRoutesOutsideVersionPrefix() throws {
+    struct HealthCheckRequest: HTTPRequest {
+        let path = "/health"
+    }
+
+    let urlRequest = try HealthCheckRequest().makeURLRequest(
+        configuration: NetworkConfiguration(
+            baseURL: URL(string: "https://example.com")!,
+            apiVersion: .v1
+        )
+    )
+
+    #expect(urlRequest.url?.absoluteString == "https://example.com/health")
+}
+
+@Test
 func clientDecodesSuccessfulResponse() async throws {
     let payload = try JSONEncoder().encode(User(id: 1, name: "Taylor"))
-    let session = MockURLSession { _ in
-        HTTPResponseFactory.make(statusCode: 200, data: payload)
+    let session = MockURLSession { request in
+        #expect(request.url?.absoluteString == "https://example.com/v1/users/1")
+        return HTTPResponseFactory.make(statusCode: 200, data: payload)
     }
-    let client = URLSessionNetworkClient(baseURL: URL(string: "https://example.com")!, session: session)
+    let client = URLSessionNetworkClient(
+        configuration: NetworkConfiguration(
+            baseURL: URL(string: "https://example.com")!,
+            apiVersion: .v1
+        ),
+        session: session
+    )
 
     let user = try await client.request(for: UserRequest(userID: 1))
 

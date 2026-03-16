@@ -7,23 +7,37 @@ public protocol URLSessionProtocol: Sendable {
 extension URLSession: URLSessionProtocol {}
 
 public struct URLSessionNetworkClient: NetworkClient, Sendable {
-    public let baseURL: URL
+    public let configuration: NetworkConfiguration
     public let session: any URLSessionProtocol
     public let successStatusCodes: Range<Int>
+
+    public var baseURL: URL {
+        configuration.baseURL
+    }
 
     public init(
         baseURL: URL,
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300
     ) {
-        self.baseURL = baseURL
+        self.configuration = NetworkConfiguration(baseURL: baseURL)
+        self.session = session
+        self.successStatusCodes = successStatusCodes
+    }
+
+    public init(
+        configuration: NetworkConfiguration,
+        session: any URLSessionProtocol = URLSession.shared,
+        successStatusCodes: Range<Int> = 200..<300
+    ) {
+        self.configuration = configuration
         self.session = session
         self.successStatusCodes = successStatusCodes
     }
 
     public func execute(_ request: any HTTPRequest) async throws -> NetworkResponse {
         try Task.checkCancellation()
-        let urlRequest = try request.makeURLRequest(baseURL: baseURL)
+        let urlRequest = try request.makeURLRequest(configuration: configuration)
         do {
             let (data, response) = try await session.data(for: urlRequest)
             try Task.checkCancellation()

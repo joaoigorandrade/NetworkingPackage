@@ -2,6 +2,7 @@ import Foundation
 
 public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
     public let path: String
+    public let apiVersion: APIVersion?
     public let method: HTTPMethod
     public let headers: [String: String]
     public let queryItems: [URLQueryItem]
@@ -10,6 +11,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
 
     public init(
         path: String,
+        apiVersion: APIVersion? = nil,
         method: HTTPMethod = .get,
         headers: [String: String] = [:],
         queryItems: [URLQueryItem] = [],
@@ -17,6 +19,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
         timeoutInterval: TimeInterval? = nil
     ) {
         self.path = path
+        self.apiVersion = apiVersion
         self.method = method
         self.headers = headers
         self.queryItems = queryItems
@@ -27,6 +30,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
     public func method(_ method: HTTPMethod) -> Self {
         Self(
             path: path,
+            apiVersion: apiVersion,
             method: method,
             headers: headers,
             queryItems: queryItems,
@@ -40,6 +44,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
         headers[name] = value
         return Self(
             path: path,
+            apiVersion: apiVersion,
             method: method,
             headers: headers,
             queryItems: queryItems,
@@ -52,6 +57,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
         let additionalItems = values.map { URLQueryItem(name: $0.key, value: $0.value) }
         return Self(
             path: path,
+            apiVersion: apiVersion,
             method: method,
             headers: headers,
             queryItems: queryItems + additionalItems,
@@ -76,6 +82,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
     public func body(_ data: Data) -> Self {
         Self(
             path: path,
+            apiVersion: apiVersion,
             method: method,
             headers: headers,
             queryItems: queryItems,
@@ -87,6 +94,7 @@ public struct HTTPRequestData: HTTPRequest, Sendable, Equatable {
     public func timeout(_ interval: TimeInterval) -> Self {
         Self(
             path: path,
+            apiVersion: apiVersion,
             method: method,
             headers: headers,
             queryItems: queryItems,
