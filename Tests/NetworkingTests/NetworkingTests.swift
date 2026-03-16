@@ -18,6 +18,14 @@ struct UserRequest: APIRequest {
     }
 }
 
+struct AuthorizationInterceptor: RequestInterceptor {
+    func intercept(_ request: URLRequest) async throws -> URLRequest {
+        var interceptedRequest = request
+        interceptedRequest.setValue("Bearer test-token", forHTTPHeaderField: "Authorization")
+        return interceptedRequest
+    }
+}
+
 @Test
 func requestBuilderCreatesExpectedURLRequest() throws {
     let request = HTTPRequestData(path: "/users")
@@ -140,4 +148,19 @@ func requestMapsDecodingFailure() async {
     } catch {
         Issue.record("Expected NetworkError, got \(error)")
     }
+}
+
+@Test
+func clientAppliesInterceptorsBeforeSendingRequest() async throws {
+    let session = MockURLSession { request in
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
+        return HTTPResponseFactory.make(statusCode: 200, data: Data("{}".utf8))
+    }
+    let client = URLSessionNetworkClient(
+        configuration: NetworkConfiguration(baseURL: URL(string: "https://example.com")!, apiVersion: .v1),
+        session: session,
+        interceptors: [AuthorizationInterceptor()]
+    )
+
+    _ = try await client.execute(HTTPRequestData(path: "/groups", apiVersion: .v1))
 }

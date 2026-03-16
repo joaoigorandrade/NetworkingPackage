@@ -10,6 +10,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     public let configuration: NetworkConfiguration
     public let session: any URLSessionProtocol
     public let successStatusCodes: Range<Int>
+    public let interceptors: [any RequestInterceptor]
 
     public var baseURL: URL {
         configuration.baseURL
@@ -18,26 +19,32 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     public init(
         baseURL: URL,
         session: any URLSessionProtocol = URLSession.shared,
-        successStatusCodes: Range<Int> = 200..<300
+        successStatusCodes: Range<Int> = 200..<300,
+        interceptors: [any RequestInterceptor] = []
     ) {
         self.configuration = NetworkConfiguration(baseURL: baseURL)
         self.session = session
         self.successStatusCodes = successStatusCodes
+        self.interceptors = interceptors
     }
 
     public init(
         configuration: NetworkConfiguration,
         session: any URLSessionProtocol = URLSession.shared,
-        successStatusCodes: Range<Int> = 200..<300
+        successStatusCodes: Range<Int> = 200..<300,
+        interceptors: [any RequestInterceptor] = []
     ) {
         self.configuration = configuration
         self.session = session
         self.successStatusCodes = successStatusCodes
+        self.interceptors = interceptors
     }
 
     public func execute(_ request: any HTTPRequest) async throws -> NetworkResponse {
         try Task.checkCancellation()
-        let urlRequest = try request.makeURLRequest(configuration: configuration)
+        let urlRequest = try await applyInterceptors(
+            to: request.makeURLRequest(configuration: configuration)
+        )
         do {
             let (data, response) = try await session.data(for: urlRequest)
             try Task.checkCancellation()
@@ -79,5 +86,13 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         default:
             return .requestFailed(error.localizedDescription)
         }
+    }
+
+    private func applyInterceptors(to request: URLRequest) async throws -> URLRequest {
+        var interceptedRequest = request
+        for interceptor in interceptors {
+            interceptedRequest = try await interceptor.intercept(interceptedRequest)
+        }
+        return interceptedRequest
     }
 }
