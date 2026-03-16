@@ -10,7 +10,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     public let configuration: NetworkConfiguration
     public let session: any URLSessionProtocol
     public let successStatusCodes: Range<Int>
-    public let interceptors: [any RequestInterceptor]
+    public let interceptors: [NetworkInterceptor]
 
     public var baseURL: URL {
         configuration.baseURL
@@ -20,7 +20,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         baseURL: URL,
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300,
-        interceptors: [any RequestInterceptor] = []
+        interceptors: [NetworkInterceptor] = []
     ) {
         self.configuration = NetworkConfiguration(baseURL: baseURL)
         self.session = session
@@ -32,7 +32,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         configuration: NetworkConfiguration,
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300,
-        interceptors: [any RequestInterceptor] = []
+        interceptors: [NetworkInterceptor] = []
     ) {
         self.configuration = configuration
         self.session = session
@@ -51,6 +51,11 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.requestFailed("Response was not an HTTPURLResponse")
             }
+            await applyResponseInterceptors(
+                response: httpResponse,
+                data: data,
+                request: urlRequest
+            )
             guard successStatusCodes.contains(httpResponse.statusCode) else {
                 throw NetworkError.httpError(statusCode: httpResponse.statusCode, data: data)
             }
@@ -91,8 +96,24 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     private func applyInterceptors(to request: URLRequest) async throws -> URLRequest {
         var interceptedRequest = request
         for interceptor in interceptors {
-            interceptedRequest = try await interceptor.intercept(interceptedRequest)
+            guard case let .request(requestInterceptor) = interceptor else {
+                continue
+            }
+            interceptedRequest = try await requestInterceptor.intercept(interceptedRequest)
         }
         return interceptedRequest
+    }
+
+    private func applyResponseInterceptors(
+        response: HTTPURLResponse,
+        data: Data,
+        request: URLRequest
+    ) async {
+        for interceptor in interceptors {
+            guard case let .response(responseInterceptor) = interceptor else {
+                continue
+            }
+            await responseInterceptor.intercept(response: response, data: data, request: request)
+        }
     }
 }

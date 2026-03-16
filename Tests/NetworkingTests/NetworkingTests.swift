@@ -18,7 +18,7 @@ struct UserRequest: APIRequest {
     }
 }
 
-struct AuthorizationInterceptor: RequestInterceptor {
+struct AuthorizationInterceptor: HTTPInterceptor {
     func intercept(_ request: URLRequest) async throws -> URLRequest {
         var interceptedRequest = request
         interceptedRequest.setValue("Bearer test-token", forHTTPHeaderField: "Authorization")
@@ -159,7 +159,7 @@ func clientAppliesInterceptorsBeforeSendingRequest() async throws {
     let client = URLSessionNetworkClient(
         configuration: NetworkConfiguration(baseURL: URL(string: "https://example.com")!, apiVersion: .v1),
         session: session,
-        interceptors: [AuthorizationInterceptor()]
+        interceptors: [.request(AuthorizationInterceptor())]
     )
 
     _ = try await client.execute(HTTPRequestData(path: "/groups", apiVersion: .v1))
