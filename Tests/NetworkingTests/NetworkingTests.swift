@@ -26,6 +26,18 @@ struct AuthorizationInterceptor: HTTPInterceptor {
     }
 }
 
+actor TestNetworkLogger: NetworkLogging {
+    private(set) var entries: [NetworkLog] = []
+
+    func log(_ entry: NetworkLog) async {
+        entries.append(entry)
+    }
+
+    func snapshot() -> [NetworkLog] {
+        entries
+    }
+}
+
 @Test
 func requestBuilderCreatesExpectedURLRequest() throws {
     let request = HTTPRequestData(path: "/users")
@@ -163,4 +175,68 @@ func clientAppliesInterceptorsBeforeSendingRequest() async throws {
     )
 
     _ = try await client.execute(HTTPRequestData(path: "/groups", apiVersion: .v1))
+}
+
+@Test
+func clientLogsRequestAndResponse() async throws {
+    let logger = TestNetworkLogger()
+    let payload = Data("{\"id\":1}".utf8)
+    let session = MockURLSession { request in
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+        return HTTPResponseFactory.make(
+            statusCode: 200,
+            headers: ["Content-Type": "application/json"],
+            data: payload
+        )
+    }
+    let client = URLSessionNetworkClient(
+        baseURL: URL(string: "https://example.com")!,
+        session: session,
+        logger: logger
+    )
+
+    _ = try await client.execute(
+        HTTPRequestData(path: "/groups")
+            .method(.post)
+            .header("Content-Type", "application/json")
+            .body(Data("{\"name\":\"Weekend\"}".utf8))
+    )
+
+    let entries = await logger.snapshot()
+
+    #expect(entries.count == 2)
+    #expect(entries[0].kind == .request)
+    #expect(entries[0].method == "POST")
+    #expect(entries[0].url == "https://example.com/groups")
+    #expect(entries[0].requestBody == "{\"name\":\"Weekend\"}")
+    #expect(entries[1].kind == .response)
+    #expect(entries[1].responseStatusCode == 200)
+    #expect(entries[1].responseHeaders["Content-Type"] == "application/json")
+    #expect(entries[1].responseBody == "{\"id\":1}")
+    #expect(entries[1].duration != nil)
+}
+
+@Test
+func clientLogsFailures() async {
+    let logger = TestNetworkLogger()
+    let session = MockURLSession { _ in
+        throw URLError(.timedOut)
+    }
+    let client = URLSessionNetworkClient(
+        baseURL: URL(string: "https://example.com")!,
+        session: session,
+        logger: logger
+    )
+
+    await #expect(throws: NetworkError.timeout) {
+        try await client.execute(HTTPRequestData(path: "/timeout"))
+    }
+
+    let entries = await logger.snapshot()
+
+    #expect(entries.count == 2)
+    #expect(entries[0].kind == .request)
+    #expect(entries[1].kind == .failure)
+    #expect(entries[1].errorDescription == String(describing: NetworkError.timeout))
+    #expect(entries[1].duration != nil)
 }

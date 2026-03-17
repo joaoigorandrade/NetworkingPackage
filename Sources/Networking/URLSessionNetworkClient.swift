@@ -11,6 +11,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     public let session: any URLSessionProtocol
     public let successStatusCodes: Range<Int>
     public let interceptors: [NetworkInterceptor]
+    public let logger: (any NetworkLogging)?
 
     public var baseURL: URL {
         configuration.baseURL
@@ -20,24 +21,28 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         baseURL: URL,
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300,
-        interceptors: [NetworkInterceptor] = []
+        interceptors: [NetworkInterceptor] = [],
+        logger: (any NetworkLogging)? = nil
     ) {
         self.configuration = NetworkConfiguration(baseURL: baseURL)
         self.session = session
         self.successStatusCodes = successStatusCodes
         self.interceptors = interceptors
+        self.logger = logger
     }
 
     public init(
         configuration: NetworkConfiguration,
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300,
-        interceptors: [NetworkInterceptor] = []
+        interceptors: [NetworkInterceptor] = [],
+        logger: (any NetworkLogging)? = nil
     ) {
         self.configuration = configuration
         self.session = session
         self.successStatusCodes = successStatusCodes
         self.interceptors = interceptors
+        self.logger = logger
     }
 
     public func execute(_ request: any HTTPRequest) async throws -> NetworkResponse {
@@ -45,6 +50,8 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         let urlRequest = try await applyInterceptors(
             to: request.makeURLRequest(configuration: configuration)
         )
+        let startedAt = Date()
+        await log(.request(from: urlRequest, timestamp: startedAt))
         do {
             let (data, response) = try await session.data(for: urlRequest)
             try Task.checkCancellation()
@@ -55,6 +62,14 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
                 response: httpResponse,
                 data: data,
                 request: urlRequest
+            )
+            await log(
+                .response(
+                    for: urlRequest,
+                    response: httpResponse,
+                    data: data,
+                    duration: Date().timeIntervalSince(startedAt)
+                )
             )
             guard successStatusCodes.contains(httpResponse.statusCode) else {
                 throw NetworkError.httpError(statusCode: httpResponse.statusCode, data: data)
@@ -68,14 +83,48 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
                 data: data
             )
         } catch is CancellationError {
+            await log(
+                .failure(
+                    for: urlRequest,
+                    error: NetworkError.cancelled,
+                    duration: Date().timeIntervalSince(startedAt)
+                )
+            )
             throw NetworkError.cancelled
         } catch let error as URLError {
-            throw map(error)
+            let mappedError = map(error)
+            await log(
+                .failure(
+                    for: urlRequest,
+                    error: mappedError,
+                    duration: Date().timeIntervalSince(startedAt)
+                )
+            )
+            throw mappedError
         } catch let error as NetworkError {
+            await log(
+                .failure(
+                    for: urlRequest,
+                    error: error,
+                    duration: Date().timeIntervalSince(startedAt)
+                )
+            )
             throw error
         } catch {
-            throw NetworkError.requestFailed(String(describing: error))
+            let wrappedError = NetworkError.requestFailed(String(describing: error))
+            await log(
+                .failure(
+                    for: urlRequest,
+                    error: wrappedError,
+                    duration: Date().timeIntervalSince(startedAt)
+                )
+            )
+            throw wrappedError
         }
+    }
+
+    private func log(_ entry: NetworkLog) async {
+        await logger?.log(entry)
     }
 
     private func map(_ error: URLError) -> NetworkError {

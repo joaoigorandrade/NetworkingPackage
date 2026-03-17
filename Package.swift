@@ -13,7 +13,8 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Networking"
+            name: "Networking",
+            exclude: ["NetworkLogger.md"]
         ),
         .target(
             name: "NetworkingTestSupport",
