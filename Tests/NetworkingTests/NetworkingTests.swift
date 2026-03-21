@@ -58,12 +58,7 @@ func requestBuilderCreatesExpectedURLRequest() throws {
 func requestBuilderPrefixesVersionedRoutes() throws {
     let request = HTTPRequestData(path: "/groups", apiVersion: .v1, method: .post)
 
-    let urlRequest = try request.makeURLRequest(
-        configuration: NetworkConfiguration(
-            baseURL: URL(string: "https://example.com")!,
-            apiVersion: .v1
-        )
-    )
+    let urlRequest = try request.makeURLRequest(baseURL: URL(string: "https://example.com")!)
 
     #expect(urlRequest.url?.absoluteString == "https://example.com/v1/groups")
 }
@@ -74,12 +69,7 @@ func requestBuilderKeepsRootRoutesOutsideVersionPrefix() throws {
         let path = "/health"
     }
 
-    let urlRequest = try HealthCheckRequest().makeURLRequest(
-        configuration: NetworkConfiguration(
-            baseURL: URL(string: "https://example.com")!,
-            apiVersion: .v1
-        )
-    )
+    let urlRequest = try HealthCheckRequest().makeURLRequest(baseURL: URL(string: "https://example.com")!)
 
     #expect(urlRequest.url?.absoluteString == "https://example.com/health")
 }
@@ -92,10 +82,7 @@ func clientDecodesSuccessfulResponse() async throws {
         return HTTPResponseFactory.make(statusCode: 200, data: payload)
     }
     let client = URLSessionNetworkClient(
-        configuration: NetworkConfiguration(
-            baseURL: URL(string: "https://example.com")!,
-            apiVersion: .v1
-        ),
+        baseURL: URL(string: "https://example.com")!,
         session: session
     )
 
@@ -169,7 +156,7 @@ func clientAppliesInterceptorsBeforeSendingRequest() async throws {
         return HTTPResponseFactory.make(statusCode: 200, data: Data("{}".utf8))
     }
     let client = URLSessionNetworkClient(
-        configuration: NetworkConfiguration(baseURL: URL(string: "https://example.com")!, apiVersion: .v1),
+        baseURL: URL(string: "https://example.com")!,
         session: session,
         interceptors: [.request(AuthorizationInterceptor())]
     )

@@ -7,15 +7,11 @@ public protocol URLSessionProtocol: Sendable {
 extension URLSession: URLSessionProtocol {}
 
 public struct URLSessionNetworkClient: NetworkClient, Sendable {
-    public let configuration: NetworkConfiguration
+    public let baseURL: URL
     public let session: any URLSessionProtocol
     public let successStatusCodes: Range<Int>
     public let interceptors: [NetworkInterceptor]
     public let logger: (any NetworkLogging)?
-
-    public var baseURL: URL {
-        configuration.baseURL
-    }
 
     public init(
         baseURL: URL,
@@ -24,21 +20,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         interceptors: [NetworkInterceptor] = [],
         logger: (any NetworkLogging)? = nil
     ) {
-        self.configuration = NetworkConfiguration(baseURL: baseURL)
-        self.session = session
-        self.successStatusCodes = successStatusCodes
-        self.interceptors = interceptors
-        self.logger = logger
-    }
-
-    public init(
-        configuration: NetworkConfiguration,
-        session: any URLSessionProtocol = URLSession.shared,
-        successStatusCodes: Range<Int> = 200..<300,
-        interceptors: [NetworkInterceptor] = [],
-        logger: (any NetworkLogging)? = nil
-    ) {
-        self.configuration = configuration
+        self.baseURL = baseURL
         self.session = session
         self.successStatusCodes = successStatusCodes
         self.interceptors = interceptors
@@ -48,7 +30,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
     public func execute(_ request: any HTTPRequest) async throws -> NetworkResponse {
         try Task.checkCancellation()
         let urlRequest = try await applyInterceptors(
-            to: request.makeURLRequest(configuration: configuration)
+            to: request.makeURLRequest(baseURL: baseURL)
         )
         let startedAt = Date()
         await log(.request(from: urlRequest, timestamp: startedAt))
