@@ -50,7 +50,7 @@ public struct NetworkLog: Sendable, Equatable {
             kind: .request,
             method: request.httpMethod ?? HTTPMethod.get.rawValue,
             url: request.url?.absoluteString ?? "unknown",
-            requestHeaders: request.allHTTPHeaderFields ?? [:],
+            requestHeaders: (request.allHTTPHeaderFields ?? [:]).redactedForLogging,
             requestBody: request.httpBody?.logRepresentation,
             timestamp: timestamp
         )
@@ -67,7 +67,7 @@ public struct NetworkLog: Sendable, Equatable {
             kind: .response,
             method: request.httpMethod ?? HTTPMethod.get.rawValue,
             url: request.url?.absoluteString ?? "unknown",
-            requestHeaders: request.allHTTPHeaderFields ?? [:],
+            requestHeaders: (request.allHTTPHeaderFields ?? [:]).redactedForLogging,
             requestBody: request.httpBody?.logRepresentation,
             responseStatusCode: response.statusCode,
             responseHeaders: response.logHeaders,
@@ -87,7 +87,7 @@ public struct NetworkLog: Sendable, Equatable {
             kind: .failure,
             method: request.httpMethod ?? HTTPMethod.get.rawValue,
             url: request.url?.absoluteString ?? "unknown",
-            requestHeaders: request.allHTTPHeaderFields ?? [:],
+            requestHeaders: (request.allHTTPHeaderFields ?? [:]).redactedForLogging,
             requestBody: request.httpBody?.logRepresentation,
             errorDescription: String(describing: error),
             duration: duration,
@@ -169,9 +169,28 @@ private extension HTTPURLResponse {
 }
 
 private extension Dictionary where Key == String, Value == String {
+    var redactedForLogging: [String: String] {
+        reduce(into: [:]) { partialResult, pair in
+            partialResult[pair.key] = pair.key.isSensitiveHeaderName ? "<redacted>" : pair.value
+        }
+    }
+
     var sortedDescription: String {
         sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
             .map { "\($0.key): \($0.value)" }
             .joined(separator: ", ")
+    }
+}
+
+private extension String {
+    var isSensitiveHeaderName: Bool {
+        let normalized = lowercased()
+        return normalized == "authorization"
+            || normalized == "proxy-authorization"
+            || normalized == "x-api-key"
+            || normalized == "api-key"
+            || normalized == "anthropic-api-key"
+            || normalized == "cookie"
+            || normalized == "set-cookie"
     }
 }

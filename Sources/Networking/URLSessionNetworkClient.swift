@@ -18,7 +18,7 @@ public struct URLSessionNetworkClient: NetworkClient, Sendable {
         session: any URLSessionProtocol = URLSession.shared,
         successStatusCodes: Range<Int> = 200..<300,
         interceptors: [NetworkInterceptor] = [],
-        logger: (any NetworkLogging)? = nil
+        logger: (any NetworkLogging)? = ConsoleNetworkLogger()
     ) {
         self.baseURL = baseURL
         self.session = session

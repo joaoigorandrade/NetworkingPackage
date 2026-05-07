@@ -204,6 +204,50 @@ func clientLogsRequestAndResponse() async throws {
 }
 
 @Test
+func clientUsesConsoleLoggerByDefault() {
+    let client = URLSessionNetworkClient(baseURL: URL(string: "https://example.com")!)
+
+    #expect(client.logger != nil)
+}
+
+@Test
+func clientCanDisableDefaultLogger() {
+    let client = URLSessionNetworkClient(
+        baseURL: URL(string: "https://example.com")!,
+        logger: nil
+    )
+
+    #expect(client.logger == nil)
+}
+
+@Test
+func clientRedactsSensitiveHeadersInLogs() async throws {
+    let logger = TestNetworkLogger()
+    let session = MockURLSession { _ in
+        HTTPResponseFactory.make(statusCode: 200, data: Data("{}".utf8))
+    }
+    let client = URLSessionNetworkClient(
+        baseURL: URL(string: "https://example.com")!,
+        session: session,
+        logger: logger
+    )
+
+    _ = try await client.execute(
+        HTTPRequestData(path: "/groups")
+            .header("Authorization", "Bearer secret-token")
+            .header("x-api-key", "secret-key")
+            .header("Content-Type", "application/json")
+    )
+
+    let entries = await logger.snapshot()
+
+    #expect(entries[0].requestHeaders["Authorization"] == "<redacted>")
+    #expect(entries[0].requestHeaders["x-api-key"] == "<redacted>")
+    #expect(entries[0].requestHeaders["Content-Type"] == "application/json")
+    #expect(entries[1].requestHeaders["Authorization"] == "<redacted>")
+}
+
+@Test
 func clientLogsFailures() async {
     let logger = TestNetworkLogger()
     let session = MockURLSession { _ in

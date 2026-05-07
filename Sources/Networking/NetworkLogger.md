@@ -12,11 +12,11 @@
 
 ## Default Output
 
-`ConsoleNetworkLogger` prints a formatted entry for each event, which makes it easy to inspect traffic while developing.
+`ConsoleNetworkLogger` prints a formatted entry for each event, which makes it easy to inspect traffic while developing. Sensitive headers such as `Authorization`, cookies, and API keys are redacted before entries are emitted.
 
 ## Integration
 
-`URLSessionNetworkClient` accepts a `NetworkLogging` implementation through its initializer. When a logger is supplied, the client emits:
+`URLSessionNetworkClient` uses `ConsoleNetworkLogger` by default. Pass a custom `NetworkLogging` implementation to capture entries elsewhere, or pass `nil` to disable logging. When logging is enabled, the client emits:
 
 - one request log before `URLSession` starts
 - one response log after a valid `HTTPURLResponse`
