@@ -14,6 +14,8 @@
 
 `ConsoleNetworkLogger` prints a formatted entry for each event, which makes it easy to inspect traffic while developing. Sensitive headers such as `Authorization`, cookies, and API keys are redacted before entries are emitted.
 
+Valid JSON request and response bodies are pretty-printed with stable key ordering. Non-JSON UTF-8 bodies are logged as text, and binary bodies fall back to base64.
+
 ## Integration
 
 `URLSessionNetworkClient` uses `ConsoleNetworkLogger` by default. Pass a custom `NetworkLogging` implementation to capture entries elsewhere, or pass `nil` to disable logging. When logging is enabled, the client emits:

@@ -98,27 +98,23 @@ public struct NetworkLog: Sendable, Equatable {
     public var formattedMessage: String {
         var lines = ["[Networking][\(kind.rawValue.uppercased())] \(method) \(url)"]
 
-        if requestHeaders.isEmpty == false {
+        if !requestHeaders.isEmpty, kind == .request {
             lines.append("Request Headers: \(requestHeaders.sortedDescription)")
         }
 
-        if let requestBody {
+        if let requestBody, kind == .request {
             lines.append("Request Body: \(requestBody)")
         }
 
-        if let responseStatusCode {
+        if let responseStatusCode, kind == .response {
             lines.append("Status: \(responseStatusCode)")
         }
 
-        if responseHeaders.isEmpty == false {
-            lines.append("Response Headers: \(responseHeaders.sortedDescription)")
-        }
-
-        if let responseBody {
+        if let responseBody, kind == .response {
             lines.append("Response Body: \(responseBody)")
         }
 
-        if let errorDescription {
+        if let errorDescription, kind == .failure {
             lines.append("Error: \(errorDescription)")
         }
 
@@ -148,11 +144,28 @@ private extension Data {
             return nil
         }
 
+        if let formattedJSON = formattedJSONLogRepresentation {
+            return formattedJSON
+        }
+
         if let string = String(data: self, encoding: .utf8) {
             return string
         }
 
         return base64EncodedString()
+    }
+
+    var formattedJSONLogRepresentation: String? {
+        let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys]
+
+        guard let jsonObject = try? JSONSerialization.jsonObject(with: self),
+              JSONSerialization.isValidJSONObject(jsonObject),
+              let formattedData = try? JSONSerialization.data(withJSONObject: jsonObject, options: options)
+        else {
+            return nil
+        }
+
+        return String(data: formattedData, encoding: .utf8)
     }
 }
 

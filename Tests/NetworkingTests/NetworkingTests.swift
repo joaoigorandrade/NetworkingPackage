@@ -190,16 +190,26 @@ func clientLogsRequestAndResponse() async throws {
     )
 
     let entries = await logger.snapshot()
+    let expectedRequestBody = """
+    {
+      "name" : "Weekend"
+    }
+    """
+    let expectedResponseBody = """
+    {
+      "id" : 1
+    }
+    """
 
     #expect(entries.count == 2)
     #expect(entries[0].kind == .request)
     #expect(entries[0].method == "POST")
     #expect(entries[0].url == "https://example.com/groups")
-    #expect(entries[0].requestBody == "{\"name\":\"Weekend\"}")
+    #expect(entries[0].requestBody == expectedRequestBody)
     #expect(entries[1].kind == .response)
     #expect(entries[1].responseStatusCode == 200)
     #expect(entries[1].responseHeaders["Content-Type"] == "application/json")
-    #expect(entries[1].responseBody == "{\"id\":1}")
+    #expect(entries[1].responseBody == expectedResponseBody)
     #expect(entries[1].duration != nil)
 }
 
