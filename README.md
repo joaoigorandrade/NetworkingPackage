@@ -9,6 +9,7 @@ Modern Swift networking library targeting Swift 6.2+ with async/await, typed req
 - `HTTPRequestData` for fluent request construction
 - `APIRequest` for typed `Decodable` responses
 - `URLSessionNetworkClient` for async request execution and error mapping
+- `URLSessionWebSocketClient` for realtime transports, with keepalive pings and reconnect backoff
 
 ## Package Structure
 

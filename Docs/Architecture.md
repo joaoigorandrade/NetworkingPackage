@@ -14,6 +14,14 @@ The package is split into two targets:
 3. The client executes through `URLSession`, validates the HTTP status code, and wraps the result in `NetworkResponse`.
 4. The `APIRequest` decodes the typed response.
 
+## WebSocket Flow
+
+1. `WebSocketConfiguration` describes the endpoint, handshake headers, subprotocols, keepalive, and reconnect policy.
+2. `URLSessionWebSocketClient` builds the handshake `URLRequest` and asks a `WebSocketTaskFactory` for a transport handle.
+3. A receive loop pumps inbound frames into the `AsyncThrowingStream` returned by `messages()`.
+4. A dropped connection is retried with exponential backoff; the stream only ends on `close()` or a terminal failure.
+5. `WebSocketTaskHandle` is the single seam tests replace with `MockWebSocketTask`.
+
 ## Design Principles
 
 - Keep transport concerns separate from typed decoding
